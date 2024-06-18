@@ -1,30 +1,22 @@
+use core::array;
+use std::cell::RefCell;
+
+use anyhow::Result;
+use rand::random;
+
 use crate::types::{Conference, Game, Team};
 use crate::{display, utils};
-use anyhow::Result;
-use core::array;
-use rand::random;
-use std::cell::RefCell;
 
 fn partition(mut teams: Vec<Team>) -> (Vec<Team>, Vec<Team>) {
     teams.sort_by_key(|x| x.season_loses);
-    teams
-        .into_iter()
-        .partition(|x| matches!(x.conference, Conference::West))
+    teams.into_iter().partition(|x| matches!(x.conference, Conference::West))
 }
 
 fn simulate_from_teams(
-    name: &str,
-    home: &mut Team,
-    away: &mut Team,
-    count_wins: bool,
-    print: &str,
+    name: &str, home: &mut Team, away: &mut Team, count_wins: bool, print: &str,
 ) -> bool {
     let expected = utils::expected(home.elo, away.elo);
-    let (actual, home_win) = if random::<f64>() < expected {
-        (1.0, true)
-    } else {
-        (0.0, false)
-    };
+    let (actual, home_win) = if random::<f64>() < expected { (1.0, true) } else { (0.0, false) };
     let change = 32.0 * (actual - expected);
     let home_old = home.elo;
     let away_old = away.elo;
@@ -41,13 +33,13 @@ fn simulate_from_teams(
     }
     if print == "*" || home.name == print || away.name == print {
         display::print_simulated_game_info(
-            name, &home, &away, home_win, expected, home_old, away_old, change,
+            name, home, away, home_win, expected, home_old, away_old, change,
         );
     }
     home_win
 }
 
-fn simulate_from_game(game: &Game, teams: &Vec<RefCell<Team>>, print: &str) {
+fn simulate_from_game(game: &Game, teams: &[RefCell<Team>], print: &str) {
     let name = game.date.to_string();
     let mut home = teams[game.home_team_idx].borrow_mut();
     let mut away = teams[game.away_team_idx].borrow_mut();
@@ -55,10 +47,7 @@ fn simulate_from_game(game: &Game, teams: &Vec<RefCell<Team>>, print: &str) {
 }
 
 fn simulate_with_info(
-    name: &str,
-    mut home: Team,
-    mut away: Team,
-    print: &str,
+    name: &str, mut home: Team, mut away: Team, print: &str,
 ) -> (Team, Team, GameData) {
     let result = simulate_from_teams(name, &mut home, &mut away, false, print);
     let data = GameData::new(&home, &away, result);
@@ -103,9 +92,7 @@ struct ConferenceBracket {
 }
 
 impl ConferenceBracket {
-    fn new(name: String, teams: Vec<Team>) -> Self {
-        ConferenceBracket { name, teams }
-    }
+    fn new(name: String, teams: Vec<Team>) -> Self { ConferenceBracket { name, teams } }
 
     fn simulate_play_in(&mut self, print: &str) -> [GameData; 3] {
         self.teams.truncate(10);
@@ -143,11 +130,8 @@ impl ConferenceBracket {
         for _ in 0..3 {
             let mut winners = Vec::new();
             while !self.teams.is_empty() {
-                let round = Round::new(
-                    names.remove(0),
-                    self.teams.remove(0),
-                    self.teams.pop().unwrap(),
-                );
+                let round =
+                    Round::new(names.remove(0), self.teams.remove(0), self.teams.pop().unwrap());
                 let (winner, round_data) = round.simulate(print);
                 winners.push(winner);
                 data.push(round_data);
@@ -172,17 +156,10 @@ pub struct ConferenceData {
 
 impl ConferenceData {
     fn new(
-        play_in: [GameData; 3],
-        round_1: [RoundData; 4],
-        semifinals: [RoundData; 2],
+        play_in: [GameData; 3], round_1: [RoundData; 4], semifinals: [RoundData; 2],
         finals: RoundData,
     ) -> Self {
-        ConferenceData {
-            play_in,
-            round_1,
-            semifinals,
-            finals,
-        }
+        ConferenceData { play_in, round_1, semifinals, finals }
     }
 }
 
@@ -194,11 +171,7 @@ pub struct GameData {
 
 impl GameData {
     fn new(home: &Team, away: &Team, result: bool) -> Self {
-        GameData {
-            home: home.name.clone(),
-            away: away.name.clone(),
-            result,
-        }
+        GameData { home: home.name.clone(), away: away.name.clone(), result }
     }
 }
 
@@ -212,13 +185,7 @@ struct Round {
 
 impl Round {
     fn new(name: String, team_a: Team, team_b: Team) -> Self {
-        Round {
-            name: name + " game ",
-            team_a,
-            team_b,
-            team_a_wins: 0,
-            team_b_wins: 0,
-        }
+        Round { name: name + " game ", team_a, team_b, team_a_wins: 0, team_b_wins: 0 }
     }
 
     fn play_game(&mut self, switch: bool, print: &str) -> bool {
@@ -249,11 +216,7 @@ impl Round {
             game += 1;
         }
         let data = RoundData::new(&self);
-        let winner = if self.team_a_wins == 4 {
-            self.team_a
-        } else {
-            self.team_b
-        };
+        let winner = if self.team_a_wins == 4 { self.team_a } else { self.team_b };
         (winner, data)
     }
 }

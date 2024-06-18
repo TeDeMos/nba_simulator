@@ -1,10 +1,11 @@
-use crate::types::{Conference, Division, Game, Team};
-use crate::utils;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use reqwest::{IntoUrl, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+
+use crate::types::{Conference, Division, Game, Team};
+use crate::utils;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct TeamResponse {
@@ -106,7 +107,7 @@ pub async fn get_teams() -> Result<()> {
 async fn get_games(season_query: String, path: &str) -> Result<()> {
     let url_base = "https://www.balldontlie.io/api/v1/games";
     let mut query: Vec<(_, String)> = vec![("page", "0".into()), ("per_page", "100".into())];
-    query.extend(season_query.split(",").map(|x| ("seasons[]", x.into())));
+    query.extend(season_query.split(',').map(|x| ("seasons[]", x.into())));
     let mut games: Vec<Game> = Vec::new();
     loop {
         let game_response: GameResponse =

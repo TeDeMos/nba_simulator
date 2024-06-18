@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 pub mod display;
 pub mod get_data;
 pub mod process_data;

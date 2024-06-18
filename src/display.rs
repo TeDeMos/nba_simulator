@@ -1,10 +1,12 @@
-use crate::simulate::{ConferenceData, RoundData};
-use crate::types::{Game, Team};
-use anyhow::Result;
 use std::cell::RefCell;
 use std::fs;
 
-pub fn display_by_elo(teams: &Vec<RefCell<Team>>) {
+use anyhow::Result;
+
+use crate::simulate::{ConferenceData, RoundData};
+use crate::types::{Game, Team};
+
+pub fn display_by_elo(teams: &[RefCell<Team>]) {
     let mut ordered: Vec<_> = teams.iter().map(RefCell::borrow).collect();
     ordered.sort_by(|x, y| x.elo.partial_cmp(&y.elo).unwrap().reverse());
     let worse = ordered.split_off(15);
@@ -23,10 +25,10 @@ pub fn display_by_elo(teams: &Vec<RefCell<Team>>) {
     println!();
 }
 
-pub fn display_by_wins(west: &Vec<Team>, east: &Vec<Team>) {
+pub fn display_by_wins(west: &[Team], east: &[Team]) {
     println!("\nStandings after season:\n");
     println!("West Conference {:>31}| East Conference", "");
-    for (i, (w, e)) in west.into_iter().zip(east).enumerate() {
+    for (i, (w, e)) in west.iter().zip(east.iter()).enumerate() {
         println!(
             "{:>2}. {:23} {:>2}-{:<2} elo: {:>7.2} | {:>2}. {:23} {:>2}-{:<2} elo: {:>7.2}",
             i + 1,
@@ -45,16 +47,11 @@ pub fn display_by_wins(west: &Vec<Team>, east: &Vec<Team>) {
 }
 
 pub fn print_game_info(
-    game: &Game,
-    home: &Team,
-    away: &Team,
-    expected: f64,
-    home_old: f64,
-    away_old: f64,
-    change: f64,
+    game: &Game, home: &Team, away: &Team, expected: f64, home_old: f64, away_old: f64, change: f64,
 ) {
     println!(
-        "{}: {} {:>3} - {:<3} {} | exp: {:>2}% | {:>7.2} -> {:>7.2} ({:+06.2}), {:>7.2} -> {:>7.2} ({:+06.2})",
+        "{}: {} {:>3} - {:<3} {} | exp: {:>2}% | {:>7.2} -> {:>7.2} ({:+06.2}), {:>7.2} -> \
+         {:>7.2} ({:+06.2})",
         game.date.date_naive(),
         &home.name,
         game.home_score,
@@ -71,17 +68,12 @@ pub fn print_game_info(
 }
 
 pub fn print_simulated_game_info(
-    name: &str,
-    home: &Team,
-    away: &Team,
-    home_win: bool,
-    expected: f64,
-    home_old: f64,
-    away_old: f64,
-    change: f64,
+    name: &str, home: &Team, away: &Team, home_win: bool, expected: f64, home_old: f64,
+    away_old: f64, change: f64,
 ) {
     println!(
-        "{:<35}: {} {} - {} {} | exp: {:>2}% | {:>7.2} -> {:>7.2} ({:+06.2}), {:>7.2} -> {:>7.2} ({:+06.2})",
+        "{:<35}: {} {} - {} {} | exp: {:>2}% | {:>7.2} -> {:>7.2} ({:+06.2}), {:>7.2} -> {:>7.2} \
+         ({:+06.2})",
         name,
         &home.name,
         if home_win { "W" } else { "L" },
@@ -98,29 +90,20 @@ pub fn print_simulated_game_info(
 }
 
 pub fn display_ladder(
-    west: &ConferenceData,
-    east: &ConferenceData,
-    finals: &RoundData,
-    winner: &str,
+    west: &ConferenceData, east: &ConferenceData, finals: &RoundData, winner: &str,
 ) -> Result<()> {
     let ladder: String = fs::read_to_string("files/ladder.txt")?;
     let mut bytes = ladder.into_bytes();
     let mut replace = |value: &[u8; 3], replacement: &[u8]| {
         if let Some(pos) = bytes.windows(3).position(|w| w == value) {
-            for i in 0..3 {
-                bytes[pos + i] = replacement[i];
-            }
+            bytes[pos..(3 + pos)].copy_from_slice(&replacement[..3]);
         }
     };
     replace(b"FC0", winner.as_bytes());
     let mut replace_round = |mut base: [u8; 3], round: &RoundData, switch: bool| {
         let a_wins = round.team_a_wins as u8 + b'0';
         let b_wins = round.team_b_wins as u8 + b'0';
-        let score = if switch {
-            [b_wins, b'-', a_wins]
-        } else {
-            [a_wins, b'-', b_wins]
-        };
+        let score = if switch { [b_wins, b'-', a_wins] } else { [a_wins, b'-', b_wins] };
         replace(&base, &score);
         base[1] -= 1;
         base[2] = (base[2] - b'0') * 2 + b'0';
